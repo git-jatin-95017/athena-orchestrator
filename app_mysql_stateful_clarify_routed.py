@@ -112,7 +112,10 @@ RULEBOOK = {
 
 SCHEMA_CARD = f"""
 You are using **MySQL 8**. Use functions YEAR(date), MONTH(date), and DATE_FORMAT(date, '%Y-%m-01').
-IMPORTANT: MySQL does NOT have MEDIAN() function. Use PERCENTILE_CONT(0.5) or calculate median manually.
+IMPORTANT: MySQL does NOT have MEDIAN() function. For percentiles, use:
+- PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY column) OVER() for median
+- For price bands, use NTILE(4) OVER (ORDER BY price) to create quartiles
+- Or calculate manually with subqueries
 CRITICAL: When using GROUP BY, ALL non-aggregated columns in SELECT must be in GROUP BY clause.
 
 GROWTH RATE CALCULATIONS:
@@ -131,6 +134,16 @@ GROWTH RATE CALCULATIONS:
          NULLIF(LAG(total_value) OVER (PARTITION BY supplier ORDER BY year, month), 0) * 100 AS growth_rate
   FROM monthly_data
 - NEVER use LAG(SUM(...)) directly in SELECT - use CTEs first to aggregate, then apply window functions
+
+PRICE BANDS AND PERCENTILES:
+- For price quartiles, use: NTILE(4) OVER (ORDER BY price) AS price_quartile
+- For custom percentiles, use subqueries:
+  WITH price_stats AS (
+    SELECT AVG(price) as p25, AVG(price) as p50, AVG(price) as p75
+    FROM (SELECT price, NTILE(4) OVER (ORDER BY price) as quartile FROM data) t
+    WHERE quartile IN (1,2,3)
+  )
+- Example price bands: CASE WHEN price < p25 THEN 'P25' WHEN price < p50 THEN 'P50' ELSE 'P75+' END
 
 Default views to query (SELECT-only):
 - analytics_shipments(date, year, month, therapy, product_name, skus, dosage_form, uom, quantity, value_inr, price_inr_per_unit, indian_company, supplier, country, city, continent)
