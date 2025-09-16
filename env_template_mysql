@@ -1,0 +1,14 @@
+
+# --------- Copy this to a file named ".env" next to app.py ---------
+OPENAI_API_KEY=sk-your-key-here
+DB_URL=mysql+pymysql://athena_ro:YOUR_PASS@YOUR_HOST:3306/venus_ai?charset=utf8mb4
+
+# Comma-separated list. You can keep 'venus_ai' (the DB name) or leave default.
+ALLOWED_SCHEMAS=venus_ai
+
+# Explicit table allowlist (safer). Append your analytics summary tables if any.
+ALLOWED_TABLES=analytics_shipments,analytics_shipments_with_gc,analytics_mv_monthly_therapy_supplier
+
+# Safety & performance
+MAX_ROWS=5000
+CACHE_TTL_SECONDS=900

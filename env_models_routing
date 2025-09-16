@@ -1,0 +1,8 @@
+
+# --------- Model routing env ---------
+# Primary model for complex tasks
+OPENAI_MODEL=gpt-5
+# Cheaper model for short, unambiguous asks
+OPENAI_MODEL_SIMPLE=gpt-4o-mini
+# Model for summarization/memory updates (defaults to SIMPLE if not set)
+# OPENAI_MODEL_SUMMARY=gpt-4o-mini

@@ -1,0 +1,27 @@
+# Core FastAPI and web server
+fastapi==0.116.1
+uvicorn==0.35.0
+
+# OpenAI API
+openai>=1.0,<2.0
+
+# Database
+SQLAlchemy==2.0.43
+PyMySQL==1.1.2
+
+# Data validation
+pydantic==2.11.9
+
+# SQL parsing and utilities
+sqlparse==0.5.3
+
+# Caching
+cachetools==6.2.0
+
+# Environment management
+python-dotenv==1.1.1
+
+# Data processing (for export.py)
+pandas>=2.0.0
+openpyxl>=3.0.0
+mysql-connector-python>=8.0.0

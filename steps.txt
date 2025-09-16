@@ -1,0 +1,55 @@
+python3 -m venv --without-pip venv
+
+source venv/bin/activate && uvicorn app_mysql:app --reload --host 0.0.0.0 --port 8001
+
+source venv/bin/activate && uvicorn app_mysql_stateful_clarify_routed:app --reload --host 0.0.0.0 --port 8001
+
+{
+  "session_id": "demo",
+  "message": "Top 5 suppliers in oncology in the last 12 months; show price bands",
+  "title": "Test"
+}
+
+
+{
+  "session_id": "test-session-3",
+  "message": "Hello! Can you help me analyze",
+  "title": "Data Analysis Session"
+}
+
+{
+  "answer": "What specific analysis are you looking for?",
+  "data_preview": {
+    "columns": [],
+    "rows": []
+  },
+  "sql": null,
+  "latency_ms": 3407,
+  "clarify": {
+    "question": "What specific analysis are you looking for?",
+    "options": [
+      "Time period",
+      "Metrics",
+      "Filters",
+      "All of the above"
+    ]
+  }
+}
+
+==============
+{
+    "session_id": "test-session-3",
+    "message": "Metrics",
+    "title": "Data Analysis Session"
+}
+
+{
+    "answer": "Could you please clarify which metrics you are interested in analyzing? Here are a few options to consider:\n\n1. Total Value (SUM(value_inr))\n2. Total Quantity (SUM(quantity))\n3. Median Price per Unit (MEDIAN(price_inr_per_unit))\n4. Growth Metrics (YoY, CAGR)\n\nPlease select one or provide a different metric if you have something specific in mind.",
+    "data_preview": {
+      "columns": [],
+      "rows": []
+    },
+    "sql": null,
+    "latency_ms": 2206,
+    "clarify": null
+  }
