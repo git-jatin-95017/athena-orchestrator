@@ -1,6 +1,7 @@
 import os, time, json, re
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, Body
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -32,6 +33,26 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 engine: Engine = create_engine(DB_URL, pool_pre_ping=True)
 
 app = FastAPI(title="Athena Orchestrator (MySQL + Python, Stateful + Clarify + Routing)")
+
+# ------------------------------
+# CORS Configuration
+# ------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React dev server
+        "http://localhost:8080",  # Vue dev server
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080", 
+        "http://127.0.0.1:5173",
+        "file://",  # For local file serving
+        "*"  # Allow all origins in development (remove in production)
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 # ------------------------------
 # RULEBOOK & SCHEMA CARD (same as previous clarify build)
