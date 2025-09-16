@@ -53,3 +53,8 @@ source venv/bin/activate && uvicorn app_mysql_stateful_clarify_routed:app --relo
     "latency_ms": 2206,
     "clarify": null
   }
+
+  ======
+
+
+  mysql -u root -p venus_ai -e "CREATE OR REPLACE VIEW analytics_shipments AS SELECT r.\date\, YEAR(r.\date\) AS \year\, MONTH(r.\date\) AS \month\, r.therapy, r.product_name AS product_name, r.skus AS skus, r.record_type AS dosage_form, r.unit AS uom, r.quantity AS quantity, r.value_inr AS value_inr, COALESCE(r.wa_rate, r.value_inr / NULLIF(r.quantity, 0)) AS price_inr_per_unit, r.indian_company, r.foreign_company AS supplier, r.foreign_country AS country, r.city, r.continent FROM export_data r WHERE r.quantity > 0 AND r.value_inr > 0;"
