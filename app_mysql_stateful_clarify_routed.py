@@ -1,4 +1,3 @@
-
 import os, time, json, re
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, Body
@@ -114,6 +113,25 @@ RULEBOOK = {
 SCHEMA_CARD = f"""
 You are using **MySQL 8**. Use functions YEAR(date), MONTH(date), and DATE_FORMAT(date, '%Y-%m-01').
 IMPORTANT: MySQL does NOT have MEDIAN() function. Use PERCENTILE_CONT(0.5) or calculate median manually.
+CRITICAL: When using GROUP BY, ALL non-aggregated columns in SELECT must be in GROUP BY clause.
+
+GROWTH RATE CALCULATIONS:
+- For simple growth rates, use: (current_value - previous_value) / previous_value * 100
+- For YoY growth, compare same month in different years
+- For month-over-month growth, use CTEs (WITH statements) to calculate properly:
+  WITH monthly_data AS (
+    SELECT supplier, YEAR(date) AS year, MONTH(date) AS month, SUM(value_inr) AS total_value
+    FROM analytics_shipments 
+    WHERE [conditions]
+    GROUP BY supplier, YEAR(date), MONTH(date)
+  )
+  SELECT supplier, year, month, total_value,
+         LAG(total_value) OVER (PARTITION BY supplier ORDER BY year, month) AS prev_value,
+         (total_value - LAG(total_value) OVER (PARTITION BY supplier ORDER BY year, month)) / 
+         NULLIF(LAG(total_value) OVER (PARTITION BY supplier ORDER BY year, month), 0) * 100 AS growth_rate
+  FROM monthly_data
+- NEVER use LAG(SUM(...)) directly in SELECT - use CTEs first to aggregate, then apply window functions
+
 Default views to query (SELECT-only):
 - analytics_shipments(date, year, month, therapy, product_name, skus, dosage_form, uom, quantity, value_inr, price_inr_per_unit, indian_company, supplier, country, city, continent)
 - analytics_shipments_with_gc(same fields + cost_inr_per_unit, cost_inr_total, gc_inr, gc_pct)
@@ -123,6 +141,8 @@ SAFETY:
 - Query only the views above (or tables explicitly allowlisted in env).
 - SELECT-only. No DDL/DML. Always include LIMIT {MAX_ROWS} when previewing rows.
 - Use AVG() for averages, not MEDIAN() which doesn't exist in MySQL.
+- GROUP BY RULE: If you SELECT MONTH(date), YEAR(date), or any non-aggregated column, it MUST be in GROUP BY.
+- WINDOW FUNCTIONS: Use proper syntax with PARTITION BY and ORDER BY clauses.
 """
 
 # ------------------------------
@@ -261,7 +281,8 @@ TABLE_REGEXES = [
 
 def is_safe_select(sql: str) -> bool:
     s = sql.strip().rstrip(";")
-    if not s.lower().startswith("select"):
+    # Allow both SELECT and WITH (Common Table Expression) statements
+    if not (s.lower().startswith("select") or s.lower().startswith("with")):
         return False
     if DANGEROUS.search(s):
         return False
@@ -368,8 +389,16 @@ def convert_decimals(obj):
 # SQL execution
 # ------------------------------
 def run_sql_query(sql: str) -> Dict[str, Any]:
+    print(f"🔍 DEBUG: SQL Query being checked:")
+    print(f"SQL: {sql}")
+    print(f"Starts with SELECT: {sql.strip().lower().startswith('select')}")
+    print(f"Contains dangerous keywords: {bool(DANGEROUS.search(sql))}")
+    
     if not is_safe_select(sql):
+        print(f"❌ SQL REJECTED by safety check")
         raise ValueError("Only SELECT statements are allowed.")
+    else:
+        print(f"✅ SQL PASSED safety check")
     enforce_allowlist(sql)
     if RULEBOOK["safety"]["enforce_limit"]:
         sql = ensure_limit(sql)
@@ -403,7 +432,25 @@ def run_sql_query(sql: str) -> Dict[str, Any]:
 # ------------------------------
 # Model call with tools
 # ------------------------------
+def trim_messages_for_context(messages: List[Dict[str, str]], max_messages: int = 20) -> List[Dict[str, str]]:
+    """Trim messages to prevent context length exceeded errors"""
+    if len(messages) <= max_messages:
+        return messages
+    
+    # Keep the first few messages (system context) and the last few messages (recent conversation)
+    system_messages = [msg for msg in messages[:5] if msg.get("role") in ["system", "assistant"] and "SCHEMA_CARD" in msg.get("content", "")]
+    recent_messages = messages[-(max_messages - len(system_messages)):]
+    
+    # Combine system context with recent conversation
+    trimmed = system_messages + recent_messages
+    
+    print(f"🔧 Trimmed messages from {len(messages)} to {len(trimmed)} to prevent context overflow")
+    return trimmed
+
 def model_decide_and_answer(user_text: str, messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    # Trim messages to prevent context length exceeded errors
+    messages = trim_messages_for_context(messages)
+    
     first_model = pick_model(user_text)
     first = client.chat.completions.create(
         model=first_model,
